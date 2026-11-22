@@ -15,6 +15,9 @@ import {
   Globe,
   Lock,
   LogOut,
+  LogIn,
+  UserPlus,
+  UserX,
   Sparkles,
   Save,
   ShieldCheck,
@@ -61,6 +64,34 @@ export function ProfileView({ habits }: ProfileViewProps) {
   const activeHabitsCount = habits.filter((h) => h.status === "active").length;
   const totalCompletions = habits.reduce((acc, h) => acc + h.streakInfo.totalCompletions, 0);
   const maxStreak = habits.length > 0 ? Math.max(...habits.map((h) => h.streakInfo.bestStreak)) : 0;
+
+  if (!user) {
+    return (
+      <div className="space-y-6 max-w-lg mx-auto py-12 text-center animate-in fade-in">
+        <Card className="p-8">
+          <div className="w-16 h-16 rounded-3xl bg-indigo-50 dark:bg-indigo-950 text-indigo-600 mx-auto flex items-center justify-center mb-4">
+            <UserX className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">
+            You Are Currently Signed Out
+          </h2>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto mb-6">
+            Sign in to access your personal habits, synchronize routines, review analytics, and manage your account.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Button variant="primary" size="md" onClick={() => openAuthModal("login")} className="w-full sm:w-auto rounded-xl">
+              <LogIn className="w-4 h-4 mr-1.5" />
+              <span>Sign In to Account</span>
+            </Button>
+            <Button variant="outline" size="md" onClick={() => openAuthModal("register")} className="w-full sm:w-auto rounded-xl">
+              <UserPlus className="w-4 h-4 mr-1.5" />
+              <span>Create New Account</span>
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-4xl animate-in fade-in duration-300">

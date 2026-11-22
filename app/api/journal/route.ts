@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbStore } from "@/lib/db/store";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+
 const createJournalSchema = z.object({
   entry_date: z.string(),
   content: z.string().min(1),

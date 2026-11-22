@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbStore } from "@/lib/db/store";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+
 const createHabitSchema = z.object({
   title: z.string().min(1, "Habit title is required"),
   description: z.string().optional(),

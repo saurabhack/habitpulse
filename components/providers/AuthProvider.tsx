@@ -116,6 +116,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await fetch("/api/auth/logout", { method: "POST" });
       setUser(null);
       setProfile(null);
+      // Open login modal so user knows logout completed
+      setIsAuthModalOpen(true);
+      setAuthModalMode("login");
     } catch (e) {
       console.error("Failed to logout:", e);
     }

@@ -54,4 +54,18 @@ describe("Authentication & User Management Module", () => {
     // Clean up
     dbStore.updateProfile(undefined, { display_name: "Saurabh" });
   });
+
+  it("should clear current user session on logout", () => {
+    // Authenticate
+    dbStore.authenticateUser("demo@habitpulse.app", "password123");
+    expect(dbStore.getCurrentSession()).not.toBeNull();
+
+    // Logout
+    dbStore.logout();
+    expect(dbStore.getCurrentSession()).toBeNull();
+    expect(dbStore.getCurrentUserId()).toBeNull();
+
+    // Re-login to keep clean test state
+    dbStore.authenticateUser("demo@habitpulse.app", "password123");
+  });
 });

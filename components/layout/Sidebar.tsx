@@ -14,8 +14,11 @@ import {
   Sparkles,
   Flame,
   UserCheck,
+  LogOut,
+  LogIn,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 export type NavItemKey =
   | "overview"
@@ -37,6 +40,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activeTab, onSelectTab, isMobileOpen, onCloseMobile }: SidebarProps) {
+  const { user, profile, logout, openAuthModal } = useAuth();
+
   const navItems: { key: NavItemKey; label: string; icon: React.ElementType }[] = [
     { key: "overview", label: "Overview", icon: LayoutDashboard },
     { key: "today", label: "Today", icon: CheckCircle2 },
@@ -49,6 +54,9 @@ export function Sidebar({ activeTab, onSelectTab, isMobileOpen, onCloseMobile }:
     { key: "profile", label: "Profile", icon: UserCheck },
     { key: "settings", label: "Settings", icon: Settings },
   ];
+
+  const displayName = profile?.display_name || user?.email?.split("@")[0] || "User";
+  const initials = displayName[0]?.toUpperCase() || "U";
 
   const content = (
     <div className="flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 w-64 p-4 select-none">
@@ -69,7 +77,7 @@ export function Sidebar({ activeTab, onSelectTab, isMobileOpen, onCloseMobile }:
       </div>
 
       {/* Nav List */}
-      <div className="flex-1 space-y-1">
+      <div className="flex-1 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.key;
@@ -99,15 +107,53 @@ export function Sidebar({ activeTab, onSelectTab, isMobileOpen, onCloseMobile }:
         })}
       </div>
 
-      {/* Motivational Footnote */}
-      <div className="mt-auto p-3.5 rounded-2xl bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent border border-indigo-500/10">
-        <div className="flex items-center gap-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 mb-1">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Consistency Rule</span>
-        </div>
-        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-          "Small disciplines repeated with consistency every day lead to great achievements gained slowly over time."
-        </p>
+      {/* Bottom User Status & Logout */}
+      <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800">
+        {user ? (
+          <div className="flex items-center justify-between p-2 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60">
+            <div
+              onClick={() => {
+                onSelectTab("profile");
+                if (onCloseMobile) onCloseMobile();
+              }}
+              className="flex items-center gap-2.5 min-w-0 cursor-pointer flex-1"
+            >
+              <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                {initials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                  {displayName}
+                </p>
+                <p className="text-[10px] text-slate-400 truncate">
+                  {profile?.email || user.email}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                await logout();
+              }}
+              title="Sign Out"
+              className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition shrink-0 ml-1"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => {
+              openAuthModal("login");
+              if (onCloseMobile) onCloseMobile();
+            }}
+            className="w-full flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:bg-indigo-100 transition border border-indigo-200/60 dark:border-indigo-800/60"
+          >
+            <LogIn className="w-4 h-4" />
+            <span>Sign In to Account</span>
+          </button>
+        )}
       </div>
     </div>
   );

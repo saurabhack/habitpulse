@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbStore } from "@/lib/db/store";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+
 const updateProfileSchema = z.object({
   display_name: z.string().min(1).optional(),
   avatar_url: z.string().nullable().optional(),

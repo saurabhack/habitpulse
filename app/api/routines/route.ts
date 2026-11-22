@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { dbStore } from "@/lib/db/store";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+
 const createRoutineSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Menu, Plus, Timer, Moon, Sun, User, LogOut, LogIn, UserPlus, Settings, ShieldCheck } from "lucide-react";
+import { Menu, Plus, Timer, Moon, Sun, User, LogOut, LogIn, UserPlus, Settings, ShieldCheck, UserX } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -39,7 +39,8 @@ export function Header({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const displayName = profile?.display_name || "Saurabh";
+  const isLoggedIn = !!user;
+  const displayName = profile?.display_name || user?.email?.split("@")[0] || "User";
   const initials = displayName[0]?.toUpperCase() || "U";
 
   return (
@@ -95,88 +96,105 @@ export function Header({
           {theme === "dark" ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
         </button>
 
-        {/* User Account Dropdown */}
+        {/* User Account / Auth Section */}
         <div className="relative pl-2 border-l border-slate-200 dark:border-slate-800" ref={dropdownRef}>
-          <button
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-2 p-1 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition focus:outline-none"
-          >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-xs">
-              {initials}
-            </div>
-            <span className="hidden lg:inline text-xs font-bold text-slate-700 dark:text-slate-300">
-              {displayName}
-            </span>
-          </button>
-
-          {/* Dropdown Menu */}
-          {isDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-              <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
-                <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+          {isLoggedIn ? (
+            /* Logged in Avatar & Menu */
+            <>
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center gap-2 p-1 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition focus:outline-none"
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-xs">
+                  {initials}
+                </div>
+                <span className="hidden lg:inline text-xs font-bold text-slate-700 dark:text-slate-300">
                   {displayName}
-                </p>
-                <p className="text-[11px] text-slate-400 truncate">
-                  {profile?.email || "demo@habitpulse.app"}
-                </p>
-              </div>
-
-              <button
-                onClick={() => {
-                  setIsDropdownOpen(false);
-                  if (onNavigateToProfile) onNavigateToProfile();
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition"
-              >
-                <User className="w-4 h-4 text-indigo-600" />
-                <span>My Profile</span>
+                </span>
               </button>
 
-              <button
-                onClick={() => {
-                  setIsDropdownOpen(false);
-                  if (onNavigateToSettings) onNavigateToSettings();
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition"
-              >
-                <Settings className="w-4 h-4 text-slate-500" />
-                <span>Preferences</span>
-              </button>
+              {/* Dropdown Menu */}
+              {isDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
+                    <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                      {displayName}
+                    </p>
+                    <p className="text-[11px] text-slate-400 truncate">
+                      {profile?.email || user?.email}
+                    </p>
+                  </div>
 
-              <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      if (onNavigateToProfile) onNavigateToProfile();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition"
+                  >
+                    <User className="w-4 h-4 text-indigo-600" />
+                    <span>My Profile</span>
+                  </button>
 
-              <button
-                onClick={() => {
-                  setIsDropdownOpen(false);
-                  openAuthModal("login");
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition"
-              >
-                <LogIn className="w-4 h-4 text-emerald-600" />
-                <span>Sign In / Switch</span>
-              </button>
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      if (onNavigateToSettings) onNavigateToSettings();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition"
+                  >
+                    <Settings className="w-4 h-4 text-slate-500" />
+                    <span>Preferences</span>
+                  </button>
 
-              <button
-                onClick={() => {
-                  setIsDropdownOpen(false);
-                  openAuthModal("register");
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition"
-              >
-                <UserPlus className="w-4 h-4 text-indigo-600" />
-                <span>Register New Account</span>
-              </button>
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      openAuthModal("login");
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition"
+                  >
+                    <UserPlus className="w-4 h-4 text-indigo-600" />
+                    <span>Switch Account</span>
+                  </button>
 
-              <button
-                onClick={() => {
-                  setIsDropdownOpen(false);
-                  logout();
-                }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-left transition"
+                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+                  <button
+                    onClick={async () => {
+                      setIsDropdownOpen(false);
+                      await logout();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-left transition"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            /* Logged Out / Guest State */
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openAuthModal("login")}
+                className="rounded-xl text-xs gap-1.5"
               >
-                <LogOut className="w-4 h-4" />
-                <span>Sign Out</span>
-              </button>
+                <LogIn className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Sign In</span>
+              </Button>
+
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => openAuthModal("register")}
+                className="hidden sm:inline-flex rounded-xl text-xs gap-1.5"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Register</span>
+              </Button>
             </div>
           )}
         </div>

@@ -38,7 +38,7 @@ interface StoredUser {
 class DataStore {
   private users: StoredUser[] = [];
   private profiles: Map<string, UserProfile> = new Map();
-  private currentUserId: string = DEFAULT_USER_ID;
+  private currentUserId: string | null = DEFAULT_USER_ID;
   private categories: Category[] = [];
   private habits: Habit[] = [];
   private schedules: HabitSchedule[] = [];
@@ -310,15 +310,16 @@ class DataStore {
   }
 
   // --- Auth & User Management ---
-  getCurrentUserId(): string {
+  getCurrentUserId(): string | null {
     return this.currentUserId;
   }
 
-  setCurrentUserId(userId: string) {
+  setCurrentUserId(userId: string | null) {
     this.currentUserId = userId;
   }
 
   getCurrentSession(): AuthSession | null {
+    if (!this.currentUserId) return null;
     const user = this.users.find((u) => u.id === this.currentUserId);
     if (!user) return null;
     const profile = this.getProfile(user.id);
@@ -418,11 +419,14 @@ class DataStore {
     return { user, profile };
   }
 
-  getProfile(userId: string = this.currentUserId): UserProfile | null {
-    const profile = this.profiles.get(userId);
+  getProfile(userId?: string | null): UserProfile | null {
+    const targetId = userId !== undefined ? userId : this.currentUserId;
+    if (!targetId) return null;
+
+    const profile = this.profiles.get(targetId);
     if (profile) return profile;
 
-    const user = this.users.find((u) => u.id === userId);
+    const user = this.users.find((u) => u.id === targetId);
     if (!user) return null;
 
     const created: UserProfile = {
@@ -435,25 +439,30 @@ class DataStore {
       created_at: user.created_at,
       updated_at: user.updated_at,
     };
-    this.profiles.set(userId, created);
+    this.profiles.set(targetId, created);
     return created;
   }
 
-  updateProfile(userId: string = this.currentUserId, updates: Partial<UserProfile>): UserProfile {
-    const profile = this.getProfile(userId);
+  updateProfile(userId?: string | null, updates?: Partial<UserProfile>): UserProfile {
+    const targetId = userId !== undefined ? userId : this.currentUserId;
+    if (!targetId) {
+      throw new Error("No active user session to update.");
+    }
+
+    const profile = this.getProfile(targetId);
     if (!profile) {
       throw new Error("User profile not found.");
     }
 
     const updated: UserProfile = {
       ...profile,
-      ...updates,
+      ...(updates || {}),
       updated_at: new Date().toISOString(),
     };
-    this.profiles.set(userId, updated);
+    this.profiles.set(targetId, updated);
 
     // Update in user record as well
-    const userIdx = this.users.findIndex((u) => u.id === userId);
+    const userIdx = this.users.findIndex((u) => u.id === targetId);
     if (userIdx !== -1) {
       this.users[userIdx] = {
         ...this.users[userIdx],
@@ -469,8 +478,7 @@ class DataStore {
   }
 
   logout(): void {
-    // Return to default demo or guest
-    this.currentUserId = DEFAULT_USER_ID;
+    this.currentUserId = null;
   }
 
   // --- Categories ---
