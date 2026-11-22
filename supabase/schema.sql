@@ -180,3 +180,37 @@ INSERT INTO public.categories (name, color, icon, is_system) VALUES
 ('Wellness & Rest', '#F59E0B', 'Sun', true),
 ('Bad Habits', '#EF4444', 'ShieldAlert', true)
 ON CONFLICT DO NOTHING;
+
+-- Automatic trigger: Whenever a user signs up via Supabase Auth,
+-- populate their record into public.profiles
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, display_name)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1))
+  )
+  ON CONFLICT (id) DO UPDATE
+  SET email = EXCLUDED.email,
+      display_name = EXCLUDED.display_name;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Convenient view so `SELECT * FROM public.users` works directly
+CREATE OR REPLACE VIEW public.users AS
+SELECT 
+  p.id,
+  p.email,
+  p.display_name,
+  p.timezone,
+  p.bio,
+  p.created_at
+FROM public.profiles p;
