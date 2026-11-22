@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbStore } from "@/lib/db/store";
+import { supabaseRegister } from "@/lib/supabase/service";
 import { z } from "zod";
 
 const registerSchema = z.object({
@@ -13,12 +14,17 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { email, password, displayName } = registerSchema.parse(body);
 
-    const result = dbStore.registerUser(email, password, displayName);
+    // 1. Sync to Supabase Auth & PostgreSQL
+    const supaResult = await supabaseRegister(email, password, displayName);
+
+    // 2. Sync to local session & store
+    const result = dbStore.registerUser(email, password, displayName, supaResult?.user?.id);
     return NextResponse.json({
       success: true,
       data: {
         user: { id: result.user.id, email: result.user.email },
         profile: result.profile,
+        supabaseConnected: supaResult.success,
       },
     }, { status: 201 });
   } catch (error: any) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbStore } from "@/lib/db/store";
+import { supabaseUpdateRoutine, supabaseDeleteRoutine } from "@/lib/supabase/service";
 import { z } from "zod";
 
 const updateRoutineSchema = z.object({
@@ -22,6 +23,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ success: false, error: "Routine not found" }, { status: 404 });
     }
 
+    await supabaseUpdateRoutine(params.id, updated);
+
     return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -37,6 +40,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     if (!deleted) {
       return NextResponse.json({ success: false, error: "Routine not found" }, { status: 404 });
     }
+    await supabaseDeleteRoutine(params.id);
     return NextResponse.json({ success: true, message: "Routine deleted successfully" });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbStore } from "@/lib/db/store";
+import { supabaseInsertHabit } from "@/lib/supabase/service";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -59,6 +60,9 @@ export async function POST(req: NextRequest) {
       schedule,
       currentUserId
     );
+
+    // Sync to Supabase PostgreSQL table
+    await supabaseInsertHabit(created);
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (error: any) {

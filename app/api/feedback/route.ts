@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbStore } from "@/lib/db/store";
+import { supabaseInsertFeedback } from "@/lib/supabase/service";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
     const { rating, tags, comment, habit_id } = feedbackSchema.parse(body);
 
     const feedback = dbStore.recordFeedback(rating, tags, comment, habit_id, currentUserId);
+    await supabaseInsertFeedback(feedback);
     return NextResponse.json({ success: true, data: feedback }, { status: 201 });
   } catch (error: any) {
     if (error instanceof z.ZodError) {

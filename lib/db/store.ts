@@ -333,13 +333,18 @@ class DataStore {
     };
   }
 
-  registerUser(email: string, password: string, displayName: string): { user: StoredUser; profile: UserProfile } {
+  registerUser(
+    email: string,
+    password: string,
+    displayName: string,
+    customUserId?: string
+  ): { user: StoredUser; profile: UserProfile } {
     const existing = this.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
     if (existing) {
       throw new Error("An account with this email address already exists.");
     }
 
-    const userId = `usr_${Date.now()}`;
+    const userId = customUserId || `usr_${Date.now()}`;
     const newUser: StoredUser = {
       id: userId,
       email: email.toLowerCase().trim(),

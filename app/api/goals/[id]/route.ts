@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbStore } from "@/lib/db/store";
+import { supabaseUpdateGoal, supabaseDeleteGoal } from "@/lib/supabase/service";
 import { z } from "zod";
 
 const updateGoalSchema = z.object({
@@ -40,6 +41,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ success: false, error: "Goal not found" }, { status: 404 });
     }
 
+    await supabaseUpdateGoal(params.id, updatedGoal);
+
     return NextResponse.json({ success: true, data: updatedGoal });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -55,6 +58,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     if (!deleted) {
       return NextResponse.json({ success: false, error: "Goal not found" }, { status: 404 });
     }
+    await supabaseDeleteGoal(params.id);
     return NextResponse.json({ success: true, message: "Goal deleted successfully" });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

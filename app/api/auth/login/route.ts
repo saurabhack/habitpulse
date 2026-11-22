@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbStore } from "@/lib/db/store";
+import { supabaseLogin } from "@/lib/supabase/service";
 import { z } from "zod";
 
 const loginSchema = z.object({
@@ -11,6 +12,9 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { email, password } = loginSchema.parse(body);
+
+    // Optional Supabase Auth attempt
+    await supabaseLogin(email, password);
 
     const result = dbStore.authenticateUser(email, password);
     return NextResponse.json({

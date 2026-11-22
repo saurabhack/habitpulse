@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbStore } from "@/lib/db/store";
+import { supabaseRecordEntry } from "@/lib/supabase/service";
 import { z } from "zod";
 
 const trackSchema = z.object({
@@ -13,6 +14,7 @@ const trackSchema = z.object({
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const currentUserId = dbStore.getCurrentUserId();
     const body = await req.json();
     const { value, isAbsolute, date, note, source, idempotencyKey } = trackSchema.parse(body);
 
@@ -21,7 +23,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     if (isAbsolute) {
       habit = dbStore.setHabitProgress(params.id, value, date);
     } else {
-      dbStore.recordEntry(params.id, value, date, note, source, idempotencyKey);
+      const entry = dbStore.recordEntry(params.id, value, date, note, source, idempotencyKey);
+      if (currentUserId && entry) {
+        await supabaseRecordEntry(entry, currentUserId);
+      }
       habit = dbStore.getHabitWithDetails(params.id, date);
     }
 

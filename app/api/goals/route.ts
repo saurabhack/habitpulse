@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbStore } from "@/lib/db/store";
+import { supabaseInsertGoal } from "@/lib/supabase/service";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +43,9 @@ export async function POST(req: NextRequest) {
       },
       currentUserId
     );
+
+    // Sync to Supabase PostgreSQL table
+    await supabaseInsertGoal(goal);
 
     return NextResponse.json({ success: true, data: goal }, { status: 201 });
   } catch (error: any) {

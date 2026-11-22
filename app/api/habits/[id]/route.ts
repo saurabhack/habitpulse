@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbStore } from "@/lib/db/store";
+import { supabaseUpdateHabit, supabaseDeleteHabit } from "@/lib/supabase/service";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -20,6 +21,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (!updated) {
       return NextResponse.json({ success: false, error: "Habit not found" }, { status: 404 });
     }
+    await supabaseUpdateHabit(params.id, body);
     return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -32,6 +34,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     if (!deleted) {
       return NextResponse.json({ success: false, error: "Habit not found" }, { status: 404 });
     }
+    await supabaseDeleteHabit(params.id);
     return NextResponse.json({ success: true, message: "Habit deleted successfully" });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbStore } from "@/lib/db/store";
+import { supabaseInsertRoutine } from "@/lib/supabase/service";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
     const { habit_ids, ...routineData } = createRoutineSchema.parse(body);
 
     const routine = dbStore.createRoutine(routineData, habit_ids, currentUserId);
+    await supabaseInsertRoutine(routine);
     return NextResponse.json({ success: true, data: routine }, { status: 201 });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
