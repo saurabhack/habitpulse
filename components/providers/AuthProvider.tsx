@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { UserProfile, AuthSession } from "@/types";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface AuthContextType {
   user: { id: string; email: string } | null;
@@ -39,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<"login" | "register" | "forgot-password">("login");
+  const queryClient = useQueryClient();
 
   const refreshSession = async () => {
     try {
@@ -83,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(json.data.user);
         setProfile(json.data.profile);
         setIsAuthModalOpen(false);
+        queryClient.invalidateQueries();
         return { success: true };
       }
       return { success: false, error: json.error || "Login failed" };
@@ -103,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(json.data.user);
         setProfile(json.data.profile);
         setIsAuthModalOpen(false);
+        queryClient.invalidateQueries();
         return { success: true };
       }
       return { success: false, error: json.error || "Registration failed" };
@@ -116,9 +120,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await fetch("/api/auth/logout", { method: "POST" });
       setUser(null);
       setProfile(null);
-      // Open login modal so user knows logout completed
-      setIsAuthModalOpen(true);
-      setAuthModalMode("login");
+      setIsAuthModalOpen(false);
+      queryClient.clear();
     } catch (e) {
       console.error("Failed to logout:", e);
     }

@@ -15,6 +15,7 @@ import {
   DayStatus,
   UserProfile,
   AuthSession,
+  UserFeedback,
 } from "@/types";
 import { isHabitScheduledForDate, isHabitCompleted } from "@/lib/engine/scheduler";
 import { calculateHabitStreaks } from "@/lib/engine/streaks";
@@ -51,6 +52,7 @@ class DataStore {
   private journalEntries: JournalEntry[] = [];
   private userSettings: Map<string, UserSettings> = new Map();
   private focusSessions: FocusSession[] = [];
+  private feedbacks: UserFeedback[] = [];
   private isInitialized = false;
 
   constructor() {
@@ -498,8 +500,10 @@ class DataStore {
   }
 
   // --- Habits & Details ---
-  getHabits(userId: string = DEFAULT_USER_ID): Habit[] {
-    return this.habits.filter((h) => h.user_id === userId);
+  getHabits(userId?: string): Habit[] {
+    const uid = userId !== undefined ? userId : this.currentUserId;
+    if (!uid) return [];
+    return this.habits.filter((h) => h.user_id === uid);
   }
 
   getHabitWithDetails(habitId: string, todayStr: string = format(new Date(), "yyyy-MM-dd")): HabitWithDetails | null {
@@ -542,8 +546,10 @@ class DataStore {
     };
   }
 
-  getAllHabitsWithDetails(userId: string = DEFAULT_USER_ID, todayStr: string = format(new Date(), "yyyy-MM-dd")): HabitWithDetails[] {
-    const userHabits = this.getHabits(userId);
+  getAllHabitsWithDetails(userId?: string, todayStr: string = format(new Date(), "yyyy-MM-dd")): HabitWithDetails[] {
+    const uid = userId !== undefined ? userId : this.currentUserId;
+    if (!uid) return [];
+    const userHabits = this.getHabits(uid);
     return userHabits
       .map((h) => this.getHabitWithDetails(h.id, todayStr))
       .filter((h): h is HabitWithDetails => h !== null);
@@ -697,8 +703,10 @@ class DataStore {
   }
 
   // --- Goals ---
-  getGoals(userId: string = DEFAULT_USER_ID): Goal[] {
-    return this.goals.filter((g) => g.user_id === userId);
+  getGoals(userId?: string): Goal[] {
+    const uid = userId !== undefined ? userId : this.currentUserId;
+    if (!uid) return [];
+    return this.goals.filter((g) => g.user_id === uid);
   }
 
   createGoal(goalData: Omit<Goal, "id" | "user_id" | "created_at" | "updated_at">, userId: string = DEFAULT_USER_ID): Goal {
@@ -732,8 +740,10 @@ class DataStore {
   }
 
   // --- Routines ---
-  getRoutines(userId: string = DEFAULT_USER_ID): (Routine & { items: RoutineHabitItem[] })[] {
-    const userRoutines = this.routines.filter((r) => r.user_id === userId);
+  getRoutines(userId?: string): (Routine & { items: RoutineHabitItem[] })[] {
+    const uid = userId !== undefined ? userId : this.currentUserId;
+    if (!uid) return [];
+    const userRoutines = this.routines.filter((r) => r.user_id === uid);
     return userRoutines.map((r) => {
       const items = this.routineHabits
         .filter((rh) => rh.routine_id === r.id)
@@ -783,9 +793,11 @@ class DataStore {
   }
 
   // --- Journal ---
-  getJournalEntries(userId: string = DEFAULT_USER_ID): JournalEntry[] {
+  getJournalEntries(userId?: string): JournalEntry[] {
+    const uid = userId !== undefined ? userId : this.currentUserId;
+    if (!uid) return [];
     return this.journalEntries
-      .filter((j) => j.user_id === userId)
+      .filter((j) => j.user_id === uid)
       .sort((a, b) => new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime());
   }
 
@@ -902,6 +914,38 @@ class DataStore {
       journal_entries: this.getJournalEntries(userId),
       focus_sessions: this.focusSessions.filter((f) => f.user_id === userId),
     };
+  }
+
+  // --- User Feedback ---
+  recordFeedback(
+    rating: number,
+    tags: string[],
+    comment: string,
+    habitId?: string | null,
+    userId?: string
+  ): UserFeedback {
+    const uid = userId || this.currentUserId;
+    if (!uid) {
+      throw new Error("User must be authenticated to submit feedback.");
+    }
+
+    const item: UserFeedback = {
+      id: `fb-${Date.now()}`,
+      user_id: uid,
+      rating,
+      tags,
+      comment,
+      habit_id: habitId || null,
+      created_at: new Date().toISOString(),
+    };
+    this.feedbacks.push(item);
+    return item;
+  }
+
+  hasSubmittedFeedback(userId?: string): boolean {
+    const uid = userId || this.currentUserId;
+    if (!uid) return false;
+    return this.feedbacks.some((f) => f.user_id === uid);
   }
 }
 

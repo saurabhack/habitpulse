@@ -29,6 +29,16 @@ export interface AuthSession {
   token?: string;
 }
 
+export interface UserFeedback {
+  id: string;
+  user_id: string;
+  rating: number; // 1-5
+  tags: string[];
+  comment: string;
+  habit_id?: string | null;
+  created_at: string;
+}
+
 export interface Category {
   id: string;
   user_id: string | null;

@@ -29,9 +29,10 @@ interface TodayViewProps {
   habits: HabitWithDetails[];
   onRefresh: () => void;
   onOpenNewHabit: () => void;
+  onHabitCompleted?: (habit: HabitWithDetails) => void;
 }
 
-export function TodayView({ habits, onRefresh, onOpenNewHabit }: TodayViewProps) {
+export function TodayView({ habits, onRefresh, onOpenNewHabit, onHabitCompleted }: TodayViewProps) {
   const [filter, setFilter] = useState<"all" | "pending" | "completed">("all");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [noteModalHabit, setNoteModalHabit] = useState<HabitWithDetails | null>(null);
@@ -56,12 +57,17 @@ export function TodayView({ habits, onRefresh, onOpenNewHabit }: TodayViewProps)
       });
 
       if (res.ok) {
+        const json = await res.json();
+        const updated = json.data || habit;
         if (!isCurrentlyCompleted) {
           confetti({
             particleCount: 50,
             spread: 50,
             origin: { y: 0.7 },
           });
+          if (onHabitCompleted) {
+            onHabitCompleted(updated);
+          }
         }
         onRefresh();
       }
@@ -89,8 +95,13 @@ export function TodayView({ habits, onRefresh, onOpenNewHabit }: TodayViewProps)
       });
 
       if (res.ok) {
+        const json = await res.json();
+        const updated = json.data || habit;
         if (nextVal >= habit.target_value && current < habit.target_value) {
           confetti({ particleCount: 40, spread: 45 });
+          if (onHabitCompleted) {
+            onHabitCompleted(updated);
+          }
         }
         onRefresh();
       }

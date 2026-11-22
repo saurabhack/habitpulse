@@ -17,7 +17,9 @@ import {
   ArrowRight,
   Sparkles,
   Calendar,
+  Check,
 } from "lucide-react";
+import confetti from "canvas-confetti";
 import { getGreeting } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -28,6 +30,7 @@ interface OverviewViewProps {
   onOpenNewHabit: () => void;
   onOpenFocusTimer: () => void;
   onRefresh: () => void;
+  onHabitCompleted?: (habit: HabitWithDetails) => void;
 }
 
 export function OverviewView({
@@ -37,9 +40,51 @@ export function OverviewView({
   onOpenNewHabit,
   onOpenFocusTimer,
   onRefresh,
+  onHabitCompleted,
 }: OverviewViewProps) {
+  const [updatingId, setUpdatingId] = React.useState<string | null>(null);
   const greeting = getGreeting();
   const todayStr = format(new Date(), "EEEE, MMMM d");
+  const isoDate = format(new Date(), "yyyy-MM-dd");
+
+  const handleQuickToggle = async (habit: HabitWithDetails, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setUpdatingId(habit.id);
+    try {
+      const isCurrentlyCompleted = habit.todayStatus === "completed";
+      const targetVal = isCurrentlyCompleted ? 0 : habit.target_value;
+
+      const res = await fetch(`/api/habits/${habit.id}/track`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          value: targetVal,
+          isAbsolute: true,
+          date: isoDate,
+        }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        const updated = json.data || habit;
+        if (!isCurrentlyCompleted) {
+          confetti({
+            particleCount: 50,
+            spread: 50,
+            origin: { y: 0.6 },
+          });
+          if (onHabitCompleted) {
+            onHabitCompleted(updated);
+          }
+        }
+        onRefresh();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   const activeHabits = habits.filter((h) => h.status === "active");
   const completedToday = habits.filter((h) => h.todayStatus === "completed").length;
@@ -281,17 +326,32 @@ export function OverviewView({
                 </div>
               </div>
 
-              <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase shrink-0 ${
-                  habit.todayStatus === "completed"
-                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                    : habit.todayStatus === "skipped"
-                    ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
-                    : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
-                }`}
-              >
-                {habit.todayStatus}
-              </span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase shrink-0 ${
+                    habit.todayStatus === "completed"
+                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                      : habit.todayStatus === "skipped"
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                      : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                  }`}
+                >
+                  {habit.todayStatus}
+                </span>
+
+                <button
+                  onClick={(e) => handleQuickToggle(habit, e)}
+                  disabled={updatingId === habit.id}
+                  title={habit.todayStatus === "completed" ? "Mark incomplete" : "Complete today"}
+                  className={`w-7 h-7 rounded-xl border flex items-center justify-center transition-all ${
+                    habit.todayStatus === "completed"
+                      ? "bg-emerald-600 border-emerald-600 text-white shadow-xs"
+                      : "border-slate-300 dark:border-slate-700 hover:border-emerald-500 text-transparent hover:text-emerald-500"
+                  }`}
+                >
+                  <Check className="w-4 h-4 stroke-[2.5]" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
