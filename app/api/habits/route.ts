@@ -41,6 +41,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const currentUserId = dbStore.getCurrentUserId();
+    if (!currentUserId) {
+      return NextResponse.json({ success: false, error: "Authentication required" }, { status: 401 });
+    }
+
     const body = await req.json();
     const validated = createHabitSchema.parse(body);
 
@@ -51,7 +56,8 @@ export async function POST(req: NextRequest) {
         ...habitData,
         status: "active",
       },
-      schedule
+      schedule,
+      currentUserId
     );
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });

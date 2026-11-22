@@ -68,7 +68,7 @@ class DataStore {
       id: DEFAULT_USER_ID,
       email: "demo@habitpulse.app",
       password_hash: "password123",
-      display_name: "Saurabh",
+      display_name: "Demo User",
       avatar_url: null,
       timezone: "UTC",
       bio: "Committed to continuous personal improvement and daily consistency.",
@@ -366,26 +366,6 @@ class DataStore {
     };
     this.profiles.set(userId, profile);
 
-    // Initialize default starter habits for new user
-    this.createHabit(
-      {
-        title: "Daily Morning Hydration",
-        description: "Drink a large glass of water upon waking up",
-        habit_type: "positive",
-        tracking_type: "boolean",
-        target_operator: "gte",
-        target_value: 1,
-        target_unit: "glass",
-        icon: "Droplets",
-        color: "#06B6D4",
-        status: "active",
-        time_of_day: "morning",
-        start_date: format(new Date(), "yyyy-MM-dd"),
-      },
-      { recurrence_type: "daily", days_of_week: [0, 1, 2, 3, 4, 5, 6] },
-      userId
-    );
-
     // Set as active session
     this.currentUserId = userId;
 
@@ -484,15 +464,17 @@ class DataStore {
   }
 
   // --- Categories ---
-  getCategories(userId: string = DEFAULT_USER_ID): Category[] {
-    return this.categories.filter((c) => c.user_id === null || c.user_id === userId);
+  getCategories(userId?: string): Category[] {
+    const uid = userId !== undefined ? userId : this.currentUserId;
+    return this.categories.filter((c) => c.user_id === null || (uid && c.user_id === uid));
   }
 
-  createCategory(category: Omit<Category, "id">, userId: string = DEFAULT_USER_ID): Category {
+  createCategory(category: Omit<Category, "id">, userId?: string): Category {
+    const uid = userId || this.currentUserId;
     const newCat: Category = {
       ...category,
       id: `cat-${Date.now()}`,
-      user_id: userId,
+      user_id: uid,
       created_at: new Date().toISOString(),
     };
     this.categories.push(newCat);
@@ -558,13 +540,18 @@ class DataStore {
   createHabit(
     habitData: Omit<Habit, "id" | "user_id" | "created_at" | "updated_at">,
     scheduleData?: Partial<HabitSchedule>,
-    userId: string = DEFAULT_USER_ID
+    userId?: string
   ): HabitWithDetails {
+    const uid = userId || this.currentUserId;
+    if (!uid) {
+      throw new Error("Authentication required to create a habit.");
+    }
+
     const habitId = `hab-${Date.now()}`;
     const newHabit: Habit = {
       ...habitData,
       id: habitId,
-      user_id: userId,
+      user_id: uid,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -619,8 +606,13 @@ class DataStore {
     note?: string,
     source: "manual" | "timer" | "routine" | "api" = "manual",
     idempotencyKey?: string,
-    userId: string = DEFAULT_USER_ID
+    userId?: string
   ): HabitEntry {
+    const uid = userId || this.currentUserId;
+    if (!uid) {
+      throw new Error("Authentication required to record habit progress.");
+    }
+
     if (idempotencyKey) {
       const existing = this.entries.find((e) => e.idempotency_key === idempotencyKey);
       if (existing) return existing;
@@ -628,7 +620,7 @@ class DataStore {
 
     const newEntry: HabitEntry = {
       id: `entry-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      user_id: userId,
+      user_id: uid,
       habit_id: habitId,
       occurred_at: new Date().toISOString(),
       local_date: localDate,
@@ -647,15 +639,18 @@ class DataStore {
     habitId: string,
     targetValue: number,
     localDate: string = format(new Date(), "yyyy-MM-dd"),
-    userId: string = DEFAULT_USER_ID
+    userId?: string
   ): HabitWithDetails | null {
+    const uid = userId || this.currentUserId;
+    if (!uid) return null;
+
     // Replace today's entries with a consolidated targetValue entry
     this.entries = this.entries.filter(
-      (e) => !(e.habit_id === habitId && e.local_date === localDate && e.user_id === userId)
+      (e) => !(e.habit_id === habitId && e.local_date === localDate && e.user_id === uid)
     );
 
     if (targetValue > 0) {
-      this.recordEntry(habitId, targetValue, localDate, undefined, "manual", undefined, userId);
+      this.recordEntry(habitId, targetValue, localDate, undefined, "manual", undefined, uid);
     }
 
     // Clear any skipped override if completing
@@ -669,15 +664,16 @@ class DataStore {
     status: "skipped" | "sick" | "vacation",
     localDate: string = format(new Date(), "yyyy-MM-dd"),
     note?: string,
-    userId: string = DEFAULT_USER_ID
+    userId?: string
   ): HabitDayOverride {
+    const uid = userId || this.currentUserId;
     const existingIndex = this.overrides.findIndex(
       (o) => o.habit_id === habitId && o.local_date === localDate
     );
 
     const overrideObj: HabitDayOverride = {
       id: existingIndex >= 0 ? this.overrides[existingIndex].id : `ov-${Date.now()}`,
-      user_id: userId,
+      user_id: uid || DEFAULT_USER_ID,
       habit_id: habitId,
       local_date: localDate,
       status,
@@ -709,16 +705,33 @@ class DataStore {
     return this.goals.filter((g) => g.user_id === uid);
   }
 
-  createGoal(goalData: Omit<Goal, "id" | "user_id" | "created_at" | "updated_at">, userId: string = DEFAULT_USER_ID): Goal {
+  createGoal(goalData: Omit<Goal, "id" | "user_id" | "created_at" | "updated_at">, userId?: string): Goal {
+    const uid = userId || this.currentUserId;
+    if (!uid) {
+      throw new Error("Authentication required to create a goal.");
+    }
+
     const newGoal: Goal = {
       ...goalData,
       id: `goal-${Date.now()}`,
-      user_id: userId,
+      user_id: uid,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
     this.goals.push(newGoal);
     return newGoal;
+  }
+
+  updateGoal(goalId: string, updates: Partial<Goal>): Goal | null {
+    const index = this.goals.findIndex((g) => g.id === goalId);
+    if (index === -1) return null;
+
+    this.goals[index] = {
+      ...this.goals[index],
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+    return this.goals[index];
   }
 
   updateGoalProgress(goalId: string, deltaOrValue: number, isAbsolute: boolean = false): Goal | null {
@@ -760,13 +773,18 @@ class DataStore {
   createRoutine(
     routineData: Omit<Routine, "id" | "user_id" | "created_at" | "updated_at">,
     habitIds: string[],
-    userId: string = DEFAULT_USER_ID
+    userId?: string
   ): Routine & { items: RoutineHabitItem[] } {
+    const uid = userId || this.currentUserId;
+    if (!uid) {
+      throw new Error("Authentication required to create a routine.");
+    }
+
     const routineId = `rtn-${Date.now()}`;
     const newRoutine: Routine = {
       ...routineData,
       id: routineId,
-      user_id: userId,
+      user_id: uid,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -782,7 +800,37 @@ class DataStore {
       });
     });
 
-    return this.getRoutines(userId).find((r) => r.id === routineId)!;
+    return this.getRoutines(uid).find((r) => r.id === routineId)!;
+  }
+
+  updateRoutine(
+    routineId: string,
+    routineData: Partial<Routine>,
+    habitIds?: string[]
+  ): (Routine & { items: RoutineHabitItem[] }) | null {
+    const rIdx = this.routines.findIndex((r) => r.id === routineId);
+    if (rIdx === -1) return null;
+
+    this.routines[rIdx] = {
+      ...this.routines[rIdx],
+      ...routineData,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (habitIds) {
+      this.routineHabits = this.routineHabits.filter((rh) => rh.routine_id !== routineId);
+      habitIds.forEach((hid, index) => {
+        this.routineHabits.push({
+          id: `rh-${Date.now()}-${index}`,
+          routine_id: routineId,
+          habit_id: hid,
+          sequence_order: index + 1,
+          estimated_minutes: 10,
+        });
+      });
+    }
+
+    return this.getRoutines().find((r) => r.id === routineId) || null;
   }
 
   deleteRoutine(routineId: string): boolean {
@@ -801,11 +849,15 @@ class DataStore {
       .sort((a, b) => new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime());
   }
 
-  createJournalEntry(entry: Omit<JournalEntry, "id" | "user_id" | "created_at" | "updated_at">, userId: string = DEFAULT_USER_ID): JournalEntry {
+  createJournalEntry(entry: Omit<JournalEntry, "id" | "user_id" | "created_at" | "updated_at">, userId?: string): JournalEntry {
+    const uid = userId || this.currentUserId;
+    if (!uid) {
+      throw new Error("Authentication required to create a journal entry.");
+    }
     const newEntry: JournalEntry = {
       ...entry,
       id: `jnl-${Date.now()}`,
-      user_id: userId,
+      user_id: uid,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -820,11 +872,15 @@ class DataStore {
   }
 
   // --- Focus Timer ---
-  recordFocusSession(session: Omit<FocusSession, "id" | "user_id" | "created_at">, userId: string = DEFAULT_USER_ID): FocusSession {
+  recordFocusSession(session: Omit<FocusSession, "id" | "user_id" | "created_at">, userId?: string): FocusSession {
+    const uid = userId || this.currentUserId;
+    if (!uid) {
+      throw new Error("Authentication required to record focus session.");
+    }
     const newSession: FocusSession = {
       ...session,
       id: `foc-${Date.now()}`,
-      user_id: userId,
+      user_id: uid,
       created_at: new Date().toISOString(),
     };
     this.focusSessions.push(newSession);
@@ -840,7 +896,7 @@ class DataStore {
           `Completed ${minutes}m focus session`,
           "timer",
           undefined,
-          userId
+          uid
         );
       }
     }
@@ -849,13 +905,14 @@ class DataStore {
   }
 
   // --- Settings ---
-  getUserSettings(userId: string = DEFAULT_USER_ID): UserSettings {
-    const existing = this.userSettings.get(userId);
+  getUserSettings(userId?: string): UserSettings {
+    const uid = userId || this.currentUserId || DEFAULT_USER_ID;
+    const existing = this.userSettings.get(uid);
     if (existing) return existing;
 
     const defaultSettings: UserSettings = {
       id: `set-${Date.now()}`,
-      user_id: userId,
+      user_id: uid,
       theme: "light",
       timezone: "UTC",
       week_starts_on: "monday",
@@ -863,18 +920,19 @@ class DataStore {
       sound_effects: true,
       analytics_consent: true,
     };
-    this.userSettings.set(userId, defaultSettings);
+    this.userSettings.set(uid, defaultSettings);
     return defaultSettings;
   }
 
-  updateUserSettings(updates: Partial<UserSettings>, userId: string = DEFAULT_USER_ID): UserSettings {
-    const current = this.getUserSettings(userId);
+  updateUserSettings(updates: Partial<UserSettings>, userId?: string): UserSettings {
+    const uid = userId || this.currentUserId || DEFAULT_USER_ID;
+    const current = this.getUserSettings(uid);
     const updated: UserSettings = {
       ...current,
       ...updates,
       updated_at: new Date().toISOString(),
     };
-    this.userSettings.set(userId, updated);
+    this.userSettings.set(uid, updated);
     return updated;
   }
 

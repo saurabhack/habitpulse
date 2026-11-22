@@ -32,7 +32,7 @@ interface ProfileViewProps {
 export function ProfileView({ habits }: ProfileViewProps) {
   const { profile, user, updateProfile, logout, openAuthModal } = useAuth();
 
-  const [displayName, setDisplayName] = useState(profile?.display_name || "Saurabh");
+  const [displayName, setDisplayName] = useState(profile?.display_name || "Demo User");
   const [bio, setBio] = useState(profile?.bio || "");
   const [timezone, setTimezone] = useState(profile?.timezone || "UTC");
   const [isUpdating, setIsUpdating] = useState(false);
@@ -110,12 +110,12 @@ export function ProfileView({ habits }: ProfileViewProps) {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-indigo-500 flex items-center justify-center text-white text-2xl font-extrabold shadow-lg shadow-indigo-500/25 shrink-0">
-              {(profile?.display_name || "S")[0].toUpperCase()}
+              {(profile?.display_name || "U")[0].toUpperCase()}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                  {profile?.display_name || "Saurabh"}
+                  {profile?.display_name || "Demo User"}
                 </h3>
                 <Badge variant="success" className="gap-1">
                   <ShieldCheck className="w-3 h-3" />

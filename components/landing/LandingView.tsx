@@ -137,7 +137,7 @@ export function LandingView() {
               className="w-full sm:w-auto px-8 rounded-2xl text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-sm gap-2"
             >
               <Sparkles className="w-4 h-4 text-indigo-600" />
-              <span>Explore Instant Demo (Saurabh)</span>
+              <span>Explore Instant Demo</span>
             </Button>
           </div>
 

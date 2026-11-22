@@ -23,10 +23,15 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const currentUserId = dbStore.getCurrentUserId();
+    if (!currentUserId) {
+      return NextResponse.json({ success: false, error: "Authentication required" }, { status: 401 });
+    }
+
     const body = await req.json();
     const { habit_ids, ...routineData } = createRoutineSchema.parse(body);
 
-    const routine = dbStore.createRoutine(routineData, habit_ids);
+    const routine = dbStore.createRoutine(routineData, habit_ids, currentUserId);
     return NextResponse.json({ success: true, data: routine }, { status: 201 });
   } catch (error: any) {
     if (error instanceof z.ZodError) {

@@ -16,9 +16,11 @@ import {
   ArrowRight,
   TrendingUp,
   Sparkles,
+  Pencil,
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { format } from "date-fns";
+import { EditGoalModal } from "./EditGoalModal";
 
 interface GoalsViewProps {
   goals: Goal[];
@@ -28,6 +30,7 @@ interface GoalsViewProps {
 }
 
 export function GoalsView({ goals, habits, categories, onRefresh }: GoalsViewProps) {
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -237,12 +240,22 @@ export function GoalsView({ goals, habits, categories, onRefresh }: GoalsViewPro
                     </Button>
                   </div>
 
-                  <button
-                    onClick={() => handleDeleteGoal(goal.id)}
-                    className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setEditingGoal(goal)}
+                      title="Edit Goal"
+                      className="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteGoal(goal.id)}
+                      title="Delete Goal"
+                      className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </Card>
             );
@@ -369,6 +382,15 @@ export function GoalsView({ goals, habits, categories, onRefresh }: GoalsViewPro
           </div>
         </form>
       </Modal>
+
+      {/* Edit Goal Modal */}
+      <EditGoalModal
+        isOpen={!!editingGoal}
+        onClose={() => setEditingGoal(null)}
+        goal={editingGoal}
+        habits={habits}
+        onGoalUpdated={onRefresh}
+      />
     </div>
   );
 }

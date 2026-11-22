@@ -18,8 +18,10 @@ import {
   Moon,
   Zap,
   Sparkles,
+  Pencil,
 } from "lucide-react";
 import confetti from "canvas-confetti";
+import { EditRoutineModal } from "./EditRoutineModal";
 
 interface RoutinesViewProps {
   routines: (Routine & { items: RoutineHabitItem[] })[];
@@ -28,6 +30,7 @@ interface RoutinesViewProps {
 }
 
 export function RoutinesView({ routines, habits, onRefresh }: RoutinesViewProps) {
+  const [editingRoutine, setEditingRoutine] = useState<(Routine & { items: RoutineHabitItem[] }) | null>(null);
   const [activeRoutineToRun, setActiveRoutineToRun] = useState<(Routine & { items: RoutineHabitItem[] }) | null>(null);
   const [runningStepIndex, setRunningStepIndex] = useState(0);
 
@@ -237,12 +240,23 @@ export function RoutinesView({ routines, habits, onRefresh }: RoutinesViewProps)
                     <span>Start Ritual</span>
                   </Button>
 
-                  <button
-                    onClick={() => handleDeleteRoutine(routine.id)}
-                    className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setEditingRoutine(routine)}
+                      title="Edit Routine"
+                      className="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteRoutine(routine.id)}
+                      title="Delete Routine"
+                      className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </Card>
             );
@@ -436,6 +450,15 @@ export function RoutinesView({ routines, habits, onRefresh }: RoutinesViewProps)
           </div>
         </form>
       </Modal>
+
+      {/* Edit Routine Modal */}
+      <EditRoutineModal
+        isOpen={!!editingRoutine}
+        onClose={() => setEditingRoutine(null)}
+        routine={editingRoutine}
+        habits={habits}
+        onRoutineUpdated={onRefresh}
+      />
     </div>
   );
 }

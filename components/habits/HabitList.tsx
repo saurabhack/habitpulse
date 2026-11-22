@@ -16,7 +16,9 @@ import {
   Sparkles,
   Search,
   Filter,
+  Pencil,
 } from "lucide-react";
+import { EditHabitModal } from "./EditHabitModal";
 
 interface HabitListProps {
   habits: HabitWithDetails[];
@@ -29,6 +31,7 @@ export function HabitList({ habits, categories, onRefresh, onOpenNewHabit }: Hab
   const [statusFilter, setStatusFilter] = useState<HabitStatus | "all">("active");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [editingHabit, setEditingHabit] = useState<HabitWithDetails | null>(null);
 
   const handleTogglePause = async (habit: HabitWithDetails) => {
     const nextStatus = habit.status === "active" ? "paused" : "active";
@@ -208,6 +211,14 @@ export function HabitList({ habits, categories, onRefresh, onOpenNewHabit }: Hab
                 </span>
 
                 <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setEditingHabit(habit)}
+                    title="Edit Habit"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+
                   {habit.status !== "archived" && (
                     <button
                       onClick={() => handleTogglePause(habit)}
@@ -241,6 +252,15 @@ export function HabitList({ habits, categories, onRefresh, onOpenNewHabit }: Hab
           ))}
         </div>
       )}
+
+      {/* Edit Habit Modal */}
+      <EditHabitModal
+        isOpen={!!editingHabit}
+        onClose={() => setEditingHabit(null)}
+        habit={editingHabit}
+        categories={categories}
+        onHabitUpdated={onRefresh}
+      />
     </div>
   );
 }

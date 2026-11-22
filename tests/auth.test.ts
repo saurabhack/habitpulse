@@ -2,14 +2,14 @@ import { describe, it, expect } from "vitest";
 import { dbStore } from "../lib/db/store";
 
 describe("Authentication & User Management Module", () => {
-  it("should have pre-seeded Saurabh profile", () => {
+  it("should have pre-seeded demo user profile", () => {
     const profile = dbStore.getProfile();
     expect(profile).toBeDefined();
-    expect(profile?.display_name).toBe("Saurabh");
+    expect(profile?.display_name).toBe("Demo User");
     expect(profile?.email).toBe("demo@habitpulse.app");
   });
 
-  it("should register a new user successfully", () => {
+  it("should register a new user successfully with zero default habits", () => {
     const testEmail = `newuser_${Date.now()}@example.com`;
     const result = dbStore.registerUser(testEmail, "secret123", "Alex Morgan");
 
@@ -20,6 +20,10 @@ describe("Authentication & User Management Module", () => {
     // Verify profile lookup
     const profile = dbStore.getProfile(result.user.id);
     expect(profile?.display_name).toBe("Alex Morgan");
+
+    // Verify no default habit added
+    const userHabits = dbStore.getHabits(result.user.id);
+    expect(userHabits.length).toBe(0);
   });
 
   it("should reject registration with duplicate email", () => {
@@ -32,7 +36,7 @@ describe("Authentication & User Management Module", () => {
   it("should authenticate existing user with correct password", () => {
     const result = dbStore.authenticateUser("demo@habitpulse.app", "password123");
     expect(result.user).toBeDefined();
-    expect(result.profile.display_name).toBe("Saurabh");
+    expect(result.profile.display_name).toBe("Demo User");
   });
 
   it("should reject authentication with wrong password", () => {
@@ -43,16 +47,16 @@ describe("Authentication & User Management Module", () => {
 
   it("should update profile details properly", () => {
     const updated = dbStore.updateProfile(undefined, {
-      display_name: "Saurabh Senior Architect",
+      display_name: "Senior Architect",
       bio: "Engineering high performance software and consistent habits.",
       timezone: "Asia/Kolkata",
     });
 
-    expect(updated.display_name).toBe("Saurabh Senior Architect");
+    expect(updated.display_name).toBe("Senior Architect");
     expect(updated.timezone).toBe("Asia/Kolkata");
 
     // Clean up
-    dbStore.updateProfile(undefined, { display_name: "Saurabh" });
+    dbStore.updateProfile(undefined, { display_name: "Demo User" });
   });
 
   it("should clear current user session on logout", () => {

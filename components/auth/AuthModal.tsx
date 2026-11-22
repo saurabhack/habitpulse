@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -15,10 +15,14 @@ import {
   Eye,
   EyeOff,
   Flame,
+  Check,
+  X,
 } from "lucide-react";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function AuthModal() {
-  const { isAuthModalOpen, closeAuthModal, authModalMode, openAuthModal, login, register } = useAuth();
+  const { isAuthModalOpen, closeAuthModal, authModalMode, login, register } = useAuth();
 
   const [mode, setMode] = useState<"login" | "register" | "forgot-password">(authModalMode);
   const [email, setEmail] = useState("");
@@ -30,21 +34,55 @@ export function AuthModal() {
   const [successMsg, setSuccessMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Field touched states for validation
+  const [emailTouched, setEmailTouched] = useState(false);
+  const [passwordTouched, setPasswordTouched] = useState(false);
+  const [confirmPasswordTouched, setConfirmPasswordTouched] = useState(false);
+  const [nameTouched, setNameTouched] = useState(false);
+
   // Sync mode with parent openAuthModal calls
   React.useEffect(() => {
     setMode(authModalMode);
     setErrorMsg("");
     setSuccessMsg("");
+    setEmailTouched(false);
+    setPasswordTouched(false);
+    setConfirmPasswordTouched(false);
+    setNameTouched(false);
   }, [authModalMode, isAuthModalOpen]);
+
+  // Validation rules
+  const isEmailValid = useMemo(() => EMAIL_REGEX.test(email.trim()), [email]);
+  const isPasswordValid = useMemo(() => password.length >= 6, [password]);
+  const isNameValid = useMemo(() => displayName.trim().length >= 2, [displayName]);
+  const doPasswordsMatch = useMemo(
+    () => password.length > 0 && password === confirmPassword,
+    [password, confirmPassword]
+  );
+
+  const isLoginValid = isEmailValid && password.length >= 1;
+  const isRegisterValid = isNameValid && isEmailValid && isPasswordValid && doPasswordsMatch;
 
   if (!isAuthModalOpen) return null;
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setEmailTouched(true);
+    setPasswordTouched(true);
+
+    if (!isLoginValid) {
+      if (!isEmailValid) {
+        setErrorMsg("Please enter a valid email address (e.g. name@example.com).");
+      } else {
+        setErrorMsg("Please enter your password.");
+      }
+      return;
+    }
+
     setErrorMsg("");
     setIsSubmitting(true);
 
-    const res = await login(email, password);
+    const res = await login(email.trim(), password);
     setIsSubmitting(false);
 
     if (!res.success) {
@@ -56,20 +94,27 @@ export function AuthModal() {
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setNameTouched(true);
+    setEmailTouched(true);
+    setPasswordTouched(true);
+    setConfirmPasswordTouched(true);
+
+    if (!isRegisterValid) {
+      if (!isNameValid) {
+        setErrorMsg("Full name must be at least 2 characters.");
+      } else if (!isEmailValid) {
+        setErrorMsg("Please enter a valid email address (e.g. name@example.com).");
+      } else if (!isPasswordValid) {
+        setErrorMsg("Password must be at least 6 characters long.");
+      } else if (!doPasswordsMatch) {
+        setErrorMsg("Passwords do not match.");
+      }
+      return;
+    }
+
     setErrorMsg("");
-
-    if (password !== confirmPassword) {
-      setErrorMsg("Passwords do not match.");
-      return;
-    }
-
-    if (password.length < 6) {
-      setErrorMsg("Password must be at least 6 characters.");
-      return;
-    }
-
     setIsSubmitting(true);
-    const res = await register(email, password, displayName);
+    const res = await register(email.trim(), password, displayName.trim());
     setIsSubmitting(false);
 
     if (!res.success) {
@@ -81,6 +126,13 @@ export function AuthModal() {
 
   const handleResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setEmailTouched(true);
+
+    if (!isEmailValid) {
+      setErrorMsg("Please enter a valid email address.");
+      return;
+    }
+
     setErrorMsg("");
     setIsSubmitting(true);
 
@@ -88,7 +140,7 @@ export function AuthModal() {
       const res = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim() }),
       });
       const json = await res.json();
       setIsSubmitting(false);
@@ -100,7 +152,7 @@ export function AuthModal() {
       }
     } catch {
       setIsSubmitting(false);
-      setErrorMsg("Network error occurred.");
+      setErrorMsg("Network error occurred. Please try again.");
     }
   };
 
@@ -114,11 +166,7 @@ export function AuthModal() {
   };
 
   return (
-    <Modal
-      isOpen={isAuthModalOpen}
-      onClose={closeAuthModal}
-      maxWidth="md"
-    >
+    <Modal isOpen={isAuthModalOpen} onClose={closeAuthModal} maxWidth="md">
       <div className="py-2">
         {/* Brand Icon Header */}
         <div className="text-center mb-6">
@@ -158,7 +206,7 @@ export function AuthModal() {
 
         {/* 1. Login Form */}
         {mode === "login" && (
-          <form onSubmit={handleLoginSubmit} className="space-y-4 animate-in fade-in">
+          <form onSubmit={handleLoginSubmit} className="space-y-4 animate-in fade-in" noValidate>
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Email Address
@@ -168,12 +216,25 @@ export function AuthModal() {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errorMsg) setErrorMsg("");
+                  }}
+                  onBlur={() => setEmailTouched(true)}
                   placeholder="name@example.com"
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 bg-white dark:bg-slate-800 transition ${
+                    emailTouched && !isEmailValid && email.length > 0
+                      ? "border-rose-400 focus:ring-rose-500"
+                      : "border-slate-200 dark:border-slate-800 focus:ring-indigo-500"
+                  }`}
                   required
                 />
               </div>
+              {emailTouched && !isEmailValid && email.length > 0 && (
+                <p className="text-[11px] text-rose-500 mt-1 flex items-center gap-1">
+                  <X className="w-3 h-3" /> Please enter a valid email format (e.g. name@domain.com)
+                </p>
+              )}
             </div>
 
             <div>
@@ -194,7 +255,11 @@ export function AuthModal() {
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (errorMsg) setErrorMsg("");
+                  }}
+                  onBlur={() => setPasswordTouched(true)}
                   placeholder="••••••••"
                   className="w-full pl-9 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   required
@@ -207,6 +272,11 @@ export function AuthModal() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {passwordTouched && password.length === 0 && (
+                <p className="text-[11px] text-rose-500 mt-1 flex items-center gap-1">
+                  <X className="w-3 h-3" /> Password is required
+                </p>
+              )}
             </div>
 
             <Button
@@ -230,7 +300,7 @@ export function AuthModal() {
                 className="w-full rounded-xl border-dashed text-xs flex items-center justify-center gap-1.5 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30 hover:bg-indigo-100"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Instant Demo Login (Saurabh)</span>
+                <span>Instant Demo Login</span>
               </Button>
             </div>
 
@@ -250,74 +320,127 @@ export function AuthModal() {
 
         {/* 2. Registration Form */}
         {mode === "register" && (
-          <form onSubmit={handleRegisterSubmit} className="space-y-4 animate-in fade-in">
+          <form onSubmit={handleRegisterSubmit} className="space-y-4 animate-in fade-in" noValidate>
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Display Name / Full Name
+                Display Name / Full Name *
               </label>
               <div className="relative">
                 <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 <input
                   type="text"
                   value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
+                  onChange={(e) => {
+                    setDisplayName(e.target.value);
+                    if (errorMsg) setErrorMsg("");
+                  }}
+                  onBlur={() => setNameTouched(true)}
                   placeholder="e.g. Alex Johnson"
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 bg-white dark:bg-slate-800 transition ${
+                    nameTouched && !isNameValid
+                      ? "border-rose-400 focus:ring-rose-500"
+                      : "border-slate-200 dark:border-slate-800 focus:ring-indigo-500"
+                  }`}
                   required
                 />
               </div>
+              {nameTouched && !isNameValid && (
+                <p className="text-[11px] text-rose-500 mt-1 flex items-center gap-1">
+                  <X className="w-3 h-3" /> Name must be at least 2 characters
+                </p>
+              )}
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Email Address
+                Email Address *
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errorMsg) setErrorMsg("");
+                  }}
+                  onBlur={() => setEmailTouched(true)}
                   placeholder="name@example.com"
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 bg-white dark:bg-slate-800 transition ${
+                    emailTouched && !isEmailValid
+                      ? "border-rose-400 focus:ring-rose-500"
+                      : "border-slate-200 dark:border-slate-800 focus:ring-indigo-500"
+                  }`}
                   required
                 />
               </div>
+              {emailTouched && !isEmailValid && (
+                <p className="text-[11px] text-rose-500 mt-1 flex items-center gap-1">
+                  <X className="w-3 h-3" /> Please enter a valid email format
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Password
+                  Password *
                 </label>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (errorMsg) setErrorMsg("");
+                    }}
+                    onBlur={() => setPasswordTouched(true)}
+                    placeholder="Min 6 chars"
+                    className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 bg-white dark:bg-slate-800 transition ${
+                      passwordTouched && !isPasswordValid
+                        ? "border-rose-400 focus:ring-rose-500"
+                        : "border-slate-200 dark:border-slate-800 focus:ring-indigo-500"
+                    }`}
                     required
                   />
                 </div>
+                {passwordTouched && !isPasswordValid && (
+                  <p className="text-[10px] text-rose-500 mt-1">Min 6 characters</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Confirm Password
+                  Confirm Password *
                 </label>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   <input
                     type={showPassword ? "text" : "password"}
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      if (errorMsg) setErrorMsg("");
+                    }}
+                    onBlur={() => setConfirmPasswordTouched(true)}
+                    placeholder="Confirm"
+                    className={`w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 bg-white dark:bg-slate-800 transition ${
+                      confirmPasswordTouched && !doPasswordsMatch
+                        ? "border-rose-400 focus:ring-rose-500"
+                        : "border-slate-200 dark:border-slate-800 focus:ring-indigo-500"
+                    }`}
                     required
                   />
                 </div>
+                {confirmPasswordTouched && !doPasswordsMatch && (
+                  <p className="text-[10px] text-rose-500 mt-1">Passwords must match</p>
+                )}
+                {confirmPasswordTouched && doPasswordsMatch && (
+                  <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-0.5">
+                    <Check className="w-3 h-3" /> Passwords match
+                  </p>
+                )}
               </div>
             </div>
 
@@ -346,7 +469,7 @@ export function AuthModal() {
 
         {/* 3. Password Reset Form */}
         {mode === "forgot-password" && (
-          <form onSubmit={handleResetSubmit} className="space-y-4 animate-in fade-in">
+          <form onSubmit={handleResetSubmit} className="space-y-4 animate-in fade-in" noValidate>
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Account Email Address
@@ -356,12 +479,25 @@ export function AuthModal() {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (errorMsg) setErrorMsg("");
+                  }}
+                  onBlur={() => setEmailTouched(true)}
                   placeholder="name@example.com"
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 bg-white dark:bg-slate-800 transition ${
+                    emailTouched && !isEmailValid
+                      ? "border-rose-400 focus:ring-rose-500"
+                      : "border-slate-200 dark:border-slate-800 focus:ring-indigo-500"
+                  }`}
                   required
                 />
               </div>
+              {emailTouched && !isEmailValid && (
+                <p className="text-[11px] text-rose-500 mt-1 flex items-center gap-1">
+                  <X className="w-3 h-3" /> Please enter a valid email format
+                </p>
+              )}
             </div>
 
             <Button
